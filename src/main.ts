@@ -1,4 +1,5 @@
 // là class lõi của Nest để tạo Nestjs application
+import { VersioningType } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
 import { ConfigService } from './shared/services/config.service';
@@ -14,6 +15,13 @@ async function bootstrap() {
   const API_URL = configService.get('API_URL');
 
 
+
+  // Set global prefix and versioning (/api/v1)
+  app.setGlobalPrefix(API_PREFIX);
+  app.enableVersioning({
+    type: VersioningType.URI,
+    defaultVersion: String(API_DEFAULT_VERSION),
+  });
 
   // Start server
   try {

@@ -51,8 +51,8 @@ export class EnvironmentValidation {
   DB_HOST: string;
 
   @IsNumber()
-  @Transform(({ value }) => (value ? parseInt(value, 10) : 3306))
-  DB_PORT: number = 3306;
+  @Transform(({ value }) => (value ? parseInt(value, 10) : 5435))
+  DB_PORT: number = 5435;
 
   @IsString()
   DB_USERNAME: string;

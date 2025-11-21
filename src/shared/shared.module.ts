@@ -16,6 +16,9 @@ import { ConfigService } from "./services/config.service";
   ],
   providers: [
     ConfigService // use the load above to get information
+  ],
+  exports: [
+    ConfigService
   ]
 })
 
