@@ -5,6 +5,7 @@ import { AppModule } from './app.module';
 import { ConfigService } from './shared/services/config.service';
 import { configSwagger } from './configs/swagger.config';
 import { Logger } from '@nestjs/common';
+import { corsConfig } from './configs/cors.config';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
@@ -29,6 +30,9 @@ async function bootstrap() {
   const { swaggerEnabled, swaggerUrl } = configSwagger(app, configService);
 
 
+  // Setup CORS
+  const corsCfg = corsConfig(configService);
+  app.enableCors(corsCfg);
 
 
 
