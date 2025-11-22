@@ -3,7 +3,8 @@ import { ConfigModule } from "@nestjs/config";
 import envConfig from "src/configs/env.config";
 import { ConfigService } from "./services/config.service";
 import { ApiExceptionFilter } from "./filters/api-exception.filter";
-import  { APP_FILTER } from '@nestjs/core';
+import  { APP_FILTER, APP_PIPE } from '@nestjs/core';
+import { ApiValidationPipe } from "./pipes/validation.pipe"
 
 // global module 
 // every module can use its services without importing
@@ -23,7 +24,11 @@ import  { APP_FILTER } from '@nestjs/core';
     {
       provide: APP_FILTER,
       useClass: ApiExceptionFilter
-    }
+    },
+    {
+      provide: APP_PIPE,
+      useClass: ApiValidationPipe,
+    },
   ],
   exports: [
     ConfigService
