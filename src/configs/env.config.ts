@@ -77,6 +77,23 @@ export class EnvironmentValidation {
   @Transform(({ value }) => value.trim().replace(/^\/+|\/+$/g, '') || 'docs')
   SWAGGER_UI_PATH: string;
 
+
+  // RSA Key
+  @IsString()
+  JWT_KEY_DIRECTORY: string;
+
+  @IsString()
+  JWT_PRIVATE_ACCESS: string;
+
+  @IsString()
+  JWT_PUBLIC_ACCESS: string;
+
+  @IsString()
+  JWT_PRIVATE_REFRESH: string;
+
+  @IsString()
+  JWT_PUBLIC_REFRESH: string;
+
 }
 
 

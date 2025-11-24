@@ -1,4 +1,4 @@
-import { Injectable, type LoggerService, NestMiddleware } from '@nestjs/common';
+import { Injectable, Logger, NestMiddleware, Inject } from '@nestjs/common';
 import { randomUUID } from 'crypto';
 import { NextFunction } from 'express';
 import { Request, Response } from 'express';
@@ -7,7 +7,7 @@ import { Request, Response } from 'express';
 
 @Injectable()
 export class LoggerMiddleware implements NestMiddleware {
-  constructor(private readonly logger: LoggerService) {}
+  constructor(@Inject('LOGGER_SERVICE')private readonly logger: Logger) {}
 
   use(req: Request, res: Response, next: NextFunction) {
     // lấy thông tin request

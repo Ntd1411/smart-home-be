@@ -1,4 +1,4 @@
-import { Global, Module } from "@nestjs/common";
+import { Global, Module, Logger } from "@nestjs/common";
 import { ConfigModule } from "@nestjs/config";
 import envConfig from "src/configs/env.config";
 import { ConfigService } from "./services/config.service";
@@ -29,9 +29,14 @@ import { ApiValidationPipe } from "./pipes/validation.pipe"
       provide: APP_PIPE,
       useClass: ApiValidationPipe,
     },
+    {
+      provide: "LOGGER_SERVICE",
+      useClass: Logger
+    }
   ],
   exports: [
-    ConfigService
+    ConfigService,
+    "LOGGER_SERVICE"
   ]
 })
 
