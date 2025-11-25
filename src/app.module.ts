@@ -1,5 +1,4 @@
 import { MiddlewareConsumer, Module, NestModule} from '@nestjs/common';
-import { AppController } from './app.controller';
 import { SharedModule } from './shared/shared.module';
 import { DatabaseModule } from './database/database.module';
 import { UserModule } from './modules/user/user.module';
@@ -18,7 +17,7 @@ import { PermissionGuard } from './shared/guards/permission.guard';
    UserModule,
    AuthModule
   ],
-  controllers: [AppController],
+  controllers: [],
   providers: [
     {
       provide: APP_GUARD,
