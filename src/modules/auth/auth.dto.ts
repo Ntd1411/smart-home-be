@@ -8,7 +8,6 @@ import {
 export class LoginDto {
   // username
   @ApiProperty({
-    name: "Tên đăng nhập",
     example: "admin",
   })
   @IsString()

@@ -4,7 +4,7 @@ import { ApiProperty } from "@nestjs/swagger";
 import { UserEntity } from "./user.entity";
 
 
-@Entity()
+@Entity("refresh-token")
 export class RefreshTokenEntity extends AuditableEntity{
   // token
   @ApiProperty({

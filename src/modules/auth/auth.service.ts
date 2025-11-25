@@ -58,6 +58,9 @@ export class AuthService {
       );
     }
 
+    console.log("sfdsfsdfdfafafafdfdf")
+    console.log(password, user.password, user);
+
     // Kiểm tra mật khẩu
     const isPasswordValid = this.hashingService.compare(
       password,
@@ -194,7 +197,7 @@ export class AuthService {
       );
 
       return {
-        message: "Đăng nhập thành công"
+        message: "Đăng xuất thành công"
       }
 
     } catch (error) {

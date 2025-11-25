@@ -1,17 +1,92 @@
+import { ApiProperty } from "@nestjs/swagger"
 import {
+  IsDateString,
   IsEmail,
+  IsEnum,
+  IsNotEmpty,
+  IsOptional,
+  IsPhoneNumber,
   IsString,
-  MinLength
 } from "class-validator"
+import { Gender } from "src/shared/enums/gender.enum";
 
 
 
 export class CreateUserDto {
-  @IsEmail()
-  email: string
-
+  // username
+  @ApiProperty({
+    description: "username",
+    example: "quyentran",
+  })
+  @IsNotEmpty()
   @IsString()
-  @MinLength(6)
+  username: string;
+
+  // password
+  @ApiProperty({
+    description: "mật khẩu",
+    example: "quyentran123",
+  })
+  @IsNotEmpty()
+  @IsString()
   password: string;
 
+  // fullname
+  @ApiProperty({
+    description: "Họ và tên đầy đủ",
+    example: "Trần Duy Quyến",
+  })
+  @IsNotEmpty()
+  @IsString()
+  fullName: string;
+
+  // giới tính
+  @ApiProperty({
+    description: "Giới tính",
+    enum: Gender,
+    example: 'MALE',
+  })
+  @IsEnum(Gender)
+  gender: Gender;
+
+  // ngày/tháng/năm sinh
+  @ApiProperty({
+    description: "Ngày sinh (YYYY-MM-DD)",
+    example: "2000-01-01",
+    required: false
+  })
+  @IsOptional()
+  @IsDateString()
+  dateOfBirth?: string;
+
+  // phone
+  @ApiProperty({
+    description: "Số điện thoại",
+    example: "+84901234567",
+    required: false
+  })
+  @IsOptional()
+  @IsPhoneNumber()
+  phone?: string;
+
+  // email
+  @ApiProperty({
+    description: "Email",
+    example: "quyentran@example.com",
+    required: false
+  })
+  @IsOptional()
+  @IsEmail()
+  email?: string;
+
+  // address
+  @ApiProperty({
+    description: "Địa chỉ",
+    example: "123 Đường ABC, Quận 1, TP. HCM",
+    required: false
+  })
+  @IsOptional()
+  @IsString()
+  address?: string;
 }
+

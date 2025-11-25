@@ -19,11 +19,6 @@ export class UserEntity extends AuditableEntity {
   @ApiHideProperty()
   @Column({
     comment: 'mật khẩu',
-    // mặc định không cho select password
-    // phải dùng addSelect("")
-    // // XÓA password khỏi object trước khi return (quan trọng!)
-    // delete (user as any).password;
-    select: false   
   })
   password: string;
 
