@@ -5,6 +5,10 @@ import { ConfigService } from "./services/config.service";
 import { ApiExceptionFilter } from "./filters/api-exception.filter";
 import  { APP_FILTER, APP_PIPE } from '@nestjs/core';
 import { ApiValidationPipe } from "./pipes/validation.pipe"
+import { HashingService } from "./services/hashing.service";
+import { RsaKeyManager } from "./utils/RsaKeyManager";
+
+const globalService = [ConfigService, HashingService, RsaKeyManager]
 
 // global module 
 // every module can use its services without importing
@@ -19,7 +23,7 @@ import { ApiValidationPipe } from "./pipes/validation.pipe"
   ],
   providers: [
     // phải export thì mới inject nơi khác
-    ConfigService, // use the load above to get information
+    ...globalService,
     // không cần export vẫn hoạt động toàn cục
     {
       provide: APP_FILTER,
@@ -35,7 +39,7 @@ import { ApiValidationPipe } from "./pipes/validation.pipe"
     }
   ],
   exports: [
-    ConfigService,
+    ...globalService,
     "LOGGER_SERVICE"
   ]
 })

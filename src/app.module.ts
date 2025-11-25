@@ -7,15 +7,19 @@ import { UserModule } from './modules/user/user.module';
 import helmet from 'helmet';
 import compression from "compression";
 import { LoggerMiddleware } from './shared/middlewares/logger.middleware';
+import { AuthController } from './modules/auth/auth.controller';
+import { AuthService } from './modules/auth/auth.service';
+import { AuthModule } from './modules/auth/auth.module';
 
 @Module({
   imports: [
    SharedModule,
    DatabaseModule,
-   UserModule
+   UserModule,
+   AuthModule
   ],
-  controllers: [AppController],
-  providers: [AppService],
+  controllers: [AppController, AuthController],
+  providers: [AppService, AuthService],
 })
 export class AppModule implements NestModule{
   configure(consumer: MiddlewareConsumer) {

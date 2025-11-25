@@ -94,6 +94,14 @@ export class EnvironmentValidation {
   @IsString()
   JWT_PUBLIC_REFRESH: string;
 
+  // JWT
+  @IsNumber()
+  @Transform(({ value }) => (value ? parseInt(value, 10): 300))
+  ACCESS_TOKEN_EXPIRES_IN: number;
+  
+  @IsNumber()
+  @Transform(({ value }) => (value ? parseInt(value, 10): 3600))
+  REFRESH_TOKEN_EXPIRES_IN: number;
 }
 
 
