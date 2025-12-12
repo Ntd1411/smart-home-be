@@ -1,11 +1,11 @@
-import { ApiProperty } from "@nestjs/swagger"
+import { ApiProperty, ApiPropertyOptional, PartialType } from "@nestjs/swagger"
 import {
   IsDateString,
   IsEmail,
   IsEnum,
   IsNotEmpty,
   IsOptional,
-  IsPhoneNumber,
+  IsArray,
   IsString,
 } from "class-validator"
 import { Gender } from "src/shared/enums/gender.enum";
@@ -66,7 +66,7 @@ export class CreateUserDto {
     required: false
   })
   @IsOptional()
-  @IsPhoneNumber()
+  @IsString()
   phone?: string;
 
   // email
@@ -88,5 +88,18 @@ export class CreateUserDto {
   @IsOptional()
   @IsString()
   address?: string;
+
+  // roleIds
+  @ApiPropertyOptional({
+    description: "Danh sách ID vai trò (UUID)",
+    example: ["123e4567-e89b-12d3-a456-426614174000"],
+    type: [String],
+  })
+  @IsOptional()
+  @IsArray()
+  @IsString({ each: true })
+  roleIds?: string[];
 }
+
+export class UpdateUserDto extends PartialType(CreateUserDto) {}
 

@@ -33,7 +33,7 @@ export class UserEntity extends AuditableEntity {
   @Column({
     comment: 'giới tính',
     enum: Gender,
-    default: Gender.OTHER,
+    default: Gender.MALE,
   })
   gender: Gender;
 

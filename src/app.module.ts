@@ -6,6 +6,7 @@ import helmet from 'helmet';
 import compression from "compression";
 import { LoggerMiddleware } from './shared/middlewares/logger.middleware';
 import { AuthModule } from './modules/auth/auth.module';
+import { RoleModule } from './modules/role/role.module';
 import { APP_GUARD, APP_INTERCEPTOR } from '@nestjs/core';
 import { JwtGuard } from './shared/guards/jwt.guard';
 import { PermissionGuard } from './shared/guards/permission.guard';
@@ -17,7 +18,8 @@ import { AuditContextInterceptor } from 'src/modules/audit-log/audit-context.int
    DatabaseModule,
    UserModule,
    AuthModule,
-   AuditLogModule
+   AuditLogModule,
+   RoleModule
   ],
   controllers: [],
   providers: [

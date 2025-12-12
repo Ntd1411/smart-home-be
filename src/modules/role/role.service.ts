@@ -1,0 +1,111 @@
+import {
+  ConflictException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
+import { InjectRepository } from '@nestjs/typeorm';
+import { RoleEntity } from 'src/database/entities/role.entity';
+import { ILike, QueryFailedError, Repository } from 'typeorm';
+import { CreateRoleDto, GetRolesQueryDto, UpdateRoleDto } from './role.dto';
+
+@Injectable()
+export class RoleService {
+  constructor(
+    @InjectRepository(RoleEntity)
+    private readonly rolesRepository: Repository<RoleEntity>,
+  ) {}
+
+  // Lấy danh sách vai trò
+  async findAll(
+    queryDto: GetRolesQueryDto
+  ) {
+    const {
+      page = 1,
+      limit = 10,
+      search,
+      isSystemRole,
+      isActive,
+    } = queryDto;
+    const [data, total] = await this.rolesRepository.findAndCount({
+      where: {
+        name: search ? ILike(`%${search}%`) : undefined,
+        description: search ? ILike(`%${search}%`) : undefined,
+        isSystemRole: isSystemRole !== undefined ? isSystemRole : undefined,
+        isActive: isActive !== undefined ? isActive : undefined,
+      },
+      skip: (page - 1) * limit,
+      take: limit,
+      order: {
+        createdAt: 'DESC',
+      },
+    });
+
+    return {
+      data,
+      meta: {
+        page,
+        limit,
+        total,
+        totalPages: Math.ceil(total / limit),
+      },
+    };
+  }
+
+  async findOne(id: string) {
+    const role = await this.rolesRepository.findOne({
+      where: { id },
+    });
+    if (!role) {
+      throw new NotFoundException('Không tìm thấy vai trò');
+    }
+    return role;
+  }
+
+  // Tạo mới vai trò
+  async create(payload: CreateRoleDto) {
+    try {
+      const role = this.rolesRepository.create({
+        ...payload,
+        description: payload.description ?? '',
+        isActive: payload.isActive ?? true,
+        isSystemRole: payload.isSystemRole ?? false,
+      });
+
+      await this.rolesRepository.save(role);
+      return role;
+    } catch (error) {
+      if (error instanceof QueryFailedError) {
+        throw new ConflictException('Tên vai trò đã tồn tại');
+      }
+      throw error;
+    }
+  }
+
+  // Cập nhật vai trò
+  async update(id: string, payload: UpdateRoleDto) {
+    const role = await this.findOne(id);
+
+    Object.assign(role, {
+      ...payload,
+      description: payload.description ?? role.description,
+      isActive: payload.isActive ?? role.isActive,
+      isSystemRole: payload.isSystemRole ?? role.isSystemRole,
+    });
+
+    try {
+      return await this.rolesRepository.save(role);
+    } catch (error) {
+      if (error instanceof QueryFailedError) {
+        throw new ConflictException('Tên vai trò đã tồn tại');
+      }
+      throw error;
+    }
+  }
+
+  // Xóa vai trò
+  async remove(id: string) {
+    const role = await this.findOne(id);
+    await this.rolesRepository.remove(role);
+    return { deleted: true };
+  }
+}
