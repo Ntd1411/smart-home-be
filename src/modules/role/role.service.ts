@@ -111,15 +111,14 @@ export class RoleService {
   async syncSystemRole() {
     try {
       let systemRole = await this.rolesRepository.findOne({
-        where: { name: SystemRole.ADMIN, isSystemRole: true },
+        where: {
+          name: SystemRole.ADMIN,
+          isSystemRole: true,
+        },
       });
-
-      let subAdminRole = await this.rolesRepository.findOne({
-        where: { name: SystemRole.SUB_ADMIN, isSystemRole: true },
-      });
-
+  
       const permissions = await this.permissionRepository.find();
-
+  
       if (systemRole) {
         systemRole.isActive = true;
         systemRole.description = 'Admin role';
@@ -133,24 +132,14 @@ export class RoleService {
           permissions,
         });
       }
-
-      if (!subAdminRole) {
-        subAdminRole = this.rolesRepository.create({
-          name: SystemRole.SUB_ADMIN,
-          description: 'Sub admin role',
-          isActive: true,
-          isSystemRole: true,
-          permissions: [],
-        });
-        await this.rolesRepository.save(subAdminRole);
-      }
-
+  
       await this.rolesRepository.save(systemRole);
-
+  
       return true;
     } catch (error) {
       this.logger.error(error);
       throw new InternalServerErrorException('Lỗi khi tạo vai trò hệ thống');
     }
   }
+  
 }

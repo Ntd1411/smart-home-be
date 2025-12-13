@@ -11,7 +11,6 @@ export class RoleController {
 
   // roles list
   @Get()
-  @Public()
   @ApiOperation({
     summary: 'Danh sách vai trò',
   })
