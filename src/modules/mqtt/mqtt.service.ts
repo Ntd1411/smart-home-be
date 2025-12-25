@@ -10,10 +10,11 @@ import { DeviceService } from '../device/device.service';
 import { DeviceStatus, DeviceType } from 'src/shared/enums/device.enum';
 import { SocketGateway } from '../socket/socket.gateway';
 import { RoomSensorSnapshotEntity } from 'src/database/entities/sensor-data.entity';
-import { Repository } from 'typeorm';
+import { In, Repository } from 'typeorm';
 import { InjectRepository } from '@nestjs/typeorm';
 import { getDeviceStatistics } from 'src/shared/utils/getDeviceStatistics';
 import { SettingService } from '../setting/setting.service';
+import { Device } from 'src/database/entities/device.entity';
 
 interface SensorData {
   value: number;
@@ -40,6 +41,8 @@ export class MqttService implements OnModuleInit, OnModuleDestroy {
     private settingSevice: SettingService,
     @InjectRepository(RoomSensorSnapshotEntity)
     private readonly roomSensorSnapshotRepo: Repository<RoomSensorSnapshotEntity>,
+    @InjectRepository(Device)
+    private readonly deviceRepository: Repository<Device>,
   ) {
     this.brokerUrl =
       this.configService.get('MQTT_BROKER_URL') ||
@@ -124,13 +127,7 @@ export class MqttService implements OnModuleInit, OnModuleDestroy {
         this.logger.log('✅ Subscribed to sensor topics: +/sensor/+');
       }
     });
-    // this.client.subscribe('room/living/status', { qos: 1 }, (err) => {
-    //   if (err) {
-    //     this.logger.error(`❌ Failed to subscribe to sensor topics: ${err.message}`);
-    //   } else {
-    //     this.logger.log('✅ Subscribed to sensor topics: devices/+/sensor/+');
-    //   }
-    // });
+
 
     // Subscribe to device status: +/status/+
     this.client.subscribe('+/device-status/+', { qos: 1 }, (err) => {
@@ -140,6 +137,31 @@ export class MqttService implements OnModuleInit, OnModuleDestroy {
         );
       } else {
         this.logger.log('✅ Subscribed to device status topics: +/status/+');
+      }
+    });
+
+    // Subscribe to password request: +/request/password
+    this.client.subscribe('+/request/password', { qos: 1 }, (err) => {
+      if (err) {
+        this.logger.error(
+          `❌ Failed to subscribe to '+/request/password': ${err.message}`,
+        );
+      } else {
+        this.logger.log(
+          '✅ Subscribed to password request topics: +/request/password',
+        );
+      }
+    });
+
+    this.client.subscribe('+/current-status', { qos: 1 }, (err) => {
+      if (err) {
+        this.logger.error(
+          `❌ Failed to subscribe to '+/current-status': ${err.message}`,
+        );
+      } else {
+        this.logger.log(
+          '✅ Subscribed to password request topics: +/current-status',
+        );
       }
     });
   }
@@ -174,6 +196,8 @@ export class MqttService implements OnModuleInit, OnModuleDestroy {
   //   }
   // }
   private async handleMessage(topic: string, message: Buffer) {
+    console.log(topic);
+    console.log(message.toString());
     const parts = topic.split('/');
     if (parts.length < 2) {
       return;
@@ -184,8 +208,8 @@ export class MqttService implements OnModuleInit, OnModuleDestroy {
     if (parts.length === 3) {
       device = parts[2];
     }
-    console.log(topic);
-    console.log(message.toString());
+    console.log('topic: ', topic);
+    console.log('message: ', message.toString());
 
     switch (category) {
       case 'device-register':
@@ -193,7 +217,7 @@ export class MqttService implements OnModuleInit, OnModuleDestroy {
         await this.handleDeviceTopic(room, message);
         break;
 
-      // hiển thị trạng thái (đèn, cửa)
+      // hiển thị trạng thái (đèn, cửa, password)
       case 'device-status':
         await this.handleStatusTopic(room, device, message);
         break;
@@ -201,6 +225,16 @@ export class MqttService implements OnModuleInit, OnModuleDestroy {
       // hiển thị độ ẩm, nhiệt độ, gas, ánh sáng...
       case 'sensor-device':
         await this.handleSensorTopic(room, message);
+        break;
+
+      // yêu cầu lấy mật khẩu
+      case 'request':
+        if (device === 'password') {
+          await this.handlePasswordRequest(room);
+        }
+        break;
+      case 'current-status':
+        await this.handleCurrentStatusTopic(room, message);
         break;
 
       default:
@@ -219,6 +253,48 @@ export class MqttService implements OnModuleInit, OnModuleDestroy {
   //   await this.deviceService.updateStatus(deviceId, 'online')
   //   // TODO: lưu time-series (Phase 5) + broadcast WebSocket
   // }
+
+  private async handleCurrentStatusTopic(room: string, message: Buffer) {
+    const status = message.toString(); // online | offline
+    console.log('status: ', status);
+
+    await this.deviceRepository.update(
+      { location: room },
+      {
+        status:
+          status === 'online' ? DeviceStatus.ONLINE : DeviceStatus.OFFLINE,
+      },
+    );
+
+    this.socketGateway.emitDeviceStatus(room, {
+      status: status === 'online' ? DeviceStatus.ONLINE : DeviceStatus.OFFLINE,
+    });
+
+    // update light and door lastState
+    if (status === 'offline') {
+      await this.deviceRepository.update(
+        {
+          location: room,
+          type: In([DeviceType.LIGHT, DeviceType.DOOR]),
+        },
+        {
+          lastState: 'off',
+        },
+      );
+    }
+
+    const devices = await this.deviceService.findAll();
+    const eachRoomDevices = devices.filter((d) => d.location === room);
+
+    const deviceStatistics = getDeviceStatistics(devices);
+    const eachRoomDeviceStatistics = getDeviceStatistics(eachRoomDevices);
+
+    // gửi cho từng phòng.
+    this.socketGateway.emitDevice(room, eachRoomDeviceStatistics);
+
+    // gửi tổng quan tất cả thiết bị
+    this.socketGateway.emitDevices(deviceStatistics);
+  }
 
   private async handleDeviceTopic(room: string, message: Buffer) {
     // đăng kí thiết bị (sensors)
@@ -244,8 +320,14 @@ export class MqttService implements OnModuleInit, OnModuleDestroy {
     device: string,
     message: Buffer,
   ) {
-    // light/door
+    // light/door/password
     const payload = message.toString().trim();
+
+    // Xử lý password từ wokwi
+    if (device === 'password') {
+      await this.handlePasswordFromWokwi(room, payload);
+      return;
+    }
 
     const state = this.mapStatusToState(device, payload);
     if (!state) return;
@@ -301,11 +383,18 @@ export class MqttService implements OnModuleInit, OnModuleDestroy {
     console.log(room);
     console.log('Sensor data payload:', payload);
     // kiểm tra xem nhiệt độ, độ ẩm, gas có đạt yêu cầu không. Nếu không đưa ra cảnh báo.
+    console.log("Gas" + payload.gas);
 
     const data = {
       ...payload,
       hasWarning: false,
     };
+
+    if(payload?.gas) {
+      data.hasWarning = true;
+      data["gasWarningMessage"] = "Phát hiện rò rỉ khí gas"
+    }
+
     const settings = await this.settingSevice.findAll();
     const settingMap = new Map(
       settings.map((s) => [s.sensorType, { min: s.min, max: s.max }]),
@@ -314,7 +403,6 @@ export class MqttService implements OnModuleInit, OnModuleDestroy {
     const sensors: { key: string; label: string }[] = [
       { key: 'temperature', label: 'Nhiệt độ' },
       { key: 'humidity', label: 'Độ ẩm' },
-      { key: 'gas', label: 'Gas' },
     ];
 
     for (const sensor of sensors) {
@@ -327,7 +415,7 @@ export class MqttService implements OnModuleInit, OnModuleDestroy {
           data.hasWarning = true;
           data[`${sensor.key}WarningMessage`] = warning;
         } else {
-          data[`${sensor.key}WarningMessage`] = "";
+          data[`${sensor.key}WarningMessage`] = '';
         }
       }
     }
@@ -372,24 +460,6 @@ export class MqttService implements OnModuleInit, OnModuleDestroy {
     return null;
   }
 
-  private async handleStatus(
-    deviceId: string,
-    room: string,
-    location: string,
-    lastState: string,
-    name: string,
-    type: DeviceType,
-  ) {
-    await this.deviceService.upsert({
-      id: deviceId,
-      name,
-      type: type as DeviceType,
-      location: room,
-      lastState,
-      status: DeviceStatus.ONLINE,
-    });
-  }
-
   // Đăng ký custom handler cho topic cụ thể
   onMessage(topic: string, handler: (data: any) => void) {
     this.messageHandlers.set(topic, handler);
@@ -397,7 +467,7 @@ export class MqttService implements OnModuleInit, OnModuleDestroy {
   }
 
   // Publish command to device
-  publishCommand(room: string, device: string, payload: any) {
+  async publishCommand(room: string, device: string, payload: any) {
     // Kiểm tra kết nối trước khi publish
     if (!this.client || !this.client.connected) {
       const error = new Error(
@@ -406,6 +476,19 @@ export class MqttService implements OnModuleInit, OnModuleDestroy {
       this.logger.error(`❌ Cannot publish command: ${error.message}`);
       return Promise.reject(error);
     }
+
+    // // kiểm tra thiết bị xem có offline không?
+    // const deviceEntity = await this.deviceRepository.findOne({
+    //   where: {
+    //     location: room,
+    //     type: device === 'light' ? DeviceType.LIGHT : DeviceType.DOOR,
+    //   },
+    // });
+    // if (!deviceEntity || deviceEntity.status === DeviceStatus.OFFLINE) {
+    //   const error = new Error(`Device not found in ${room}`);
+    //   this.logger.error(`❌ Cannot publish command: ${error.message}`);
+    //   return Promise.reject(error);
+    // }
 
     const topic = `${room}/command/${device}`;
     const message = payload;
@@ -464,6 +547,112 @@ export class MqttService implements OnModuleInit, OnModuleDestroy {
   // Control door
   async controlDoor(room: string, state: boolean) {
     await this.publishCommand(room, 'door', state ? 'UNLOCK' : 'LOCK');
+  }
+
+  // Publish password to wokwi (when password changed)
+  async publishPassword(room: string, password: string) {
+    if (!this.client || !this.client.connected) {
+      const error = new Error(
+        `MQTT client is not connected. Broker: ${this.brokerUrl}`,
+      );
+      this.logger.error(`❌ Cannot publish password: ${error.message}`);
+      return Promise.reject(error);
+    }
+
+    const topic = `${room}/response/password`;
+    this.logger.debug(`📤 Publishing password to ${topic}`);
+
+    return new Promise<void>((resolve, reject) => {
+      this.client.publish(
+        topic,
+        password,
+        { qos: 1, retain: false },
+        (error) => {
+          if (error) {
+            this.logger.error(
+              `❌ Failed to publish password to ${topic}:`,
+              error,
+            );
+            reject(error);
+          } else {
+            this.logger.log(`✅ Published password to ${topic}`);
+            resolve();
+          }
+        },
+      );
+    });
+  }
+
+  // Handle password request from wokwi
+  private async handlePasswordRequest(room: string) {
+    try {
+      // Tìm door device và lấy password
+      const doorDevice = await this.deviceRepository.findOne({
+        where: {
+          location: room,
+          type: DeviceType.DOOR,
+        },
+        select: {
+          id: true,
+          password: true,
+        },
+      });
+
+      if (!doorDevice || !doorDevice.password) {
+        this.logger.warn(`⚠️ No password found for door in ${room}`);
+        return;
+      }
+
+      // Publish password về wokwi qua response topic
+      const topic = `${room}/response/password`;
+      this.logger.debug(`📤 Sending password to ${topic}`);
+
+      this.client.publish(
+        topic,
+        doorDevice.password,
+        { qos: 1, retain: false },
+        (error) => {
+          if (error) {
+            this.logger.error(`❌ Failed to send password to ${topic}:`, error);
+          } else {
+            this.logger.log(`✅ Sent password to ${topic}`);
+          }
+        },
+      );
+    } catch (error) {
+      this.logger.error(
+        `❌ Error handling password request for ${room}:`,
+        error,
+      );
+    }
+  }
+
+  // Handle password from wokwi (when wokwi sends password to save)
+  private async handlePasswordFromWokwi(room: string, password: string) {
+    try {
+      // Tìm door device và lưu password
+      const doorDevice = await this.deviceRepository.findOne({
+        where: {
+          location: room,
+          type: DeviceType.DOOR,
+        },
+      });
+
+      if (!doorDevice) {
+        this.logger.warn(`⚠️ Door device not found in ${room}`);
+        return;
+      }
+
+      // Lưu password plain text vào DB
+      await this.deviceRepository.update(
+        { id: doorDevice.id },
+        { password: password.trim() },
+      );
+
+      this.logger.log(`✅ Password saved for door in ${room}`);
+    } catch (error) {
+      this.logger.error(`❌ Error saving password for ${room}:`, error);
+    }
   }
 
   // Get MQTT client (để dùng ở nơi khác nếu cần)

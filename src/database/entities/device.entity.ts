@@ -1,5 +1,7 @@
 import { DeviceStatus, DeviceType } from 'src/shared/enums/device.enum';
 import { Entity, PrimaryColumn, Column } from 'typeorm';
+import { ApiHideProperty } from '@nestjs/swagger';
+import { Exclude } from 'class-transformer';
 
 @Entity('devices')
 export class Device {
@@ -30,4 +32,9 @@ export class Device {
     default: DeviceStatus.OFFLINE,
   })
   status: DeviceStatus;
+
+  @Exclude()
+  @ApiHideProperty()
+  @Column({ type: 'varchar', length: 255, nullable: true, comment: 'Mật khẩu của cửa (chỉ cho door device)' })
+  password?: string;
 }

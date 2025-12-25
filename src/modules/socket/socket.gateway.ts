@@ -19,4 +19,8 @@ export class SocketGateway {
   emitDevice(room: string, data: any) {
     this.server.emit(`device:${room}`, data);
   }
+
+  emitDeviceStatus(room: string, data: any) {
+    this.server.emit(`device-status:${room}`, data);
+  }
 }

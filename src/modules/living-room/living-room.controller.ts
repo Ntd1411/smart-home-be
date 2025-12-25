@@ -1,15 +1,11 @@
 import { Controller, Get, Post, Body, Param, Patch } from '@nestjs/common';
 import { LivingRoomService } from './living-room.service';
-import { LivingRoomStateDto } from './living-room.dto';
+import { LivingRoomStateDto, ChangeDoorPasswordDto } from './living-room.dto';
 
 @Controller('living-room')
 export class LivingRoomController {
   constructor(private readonly livingRoomService: LivingRoomService) {}
 
-  // @Get()
-  // getStatus() {
-  //   return this.livingRoomService.getStatus();
-  // }
 
   @Get("details")
   async getDetails() {
@@ -26,5 +22,10 @@ export class LivingRoomController {
   async controlDoor(@Body() body: LivingRoomStateDto) {
     await this.livingRoomService.controlDoor(body.state);
     return { success: true, message: `Door ${body.state ? 'UNLOCK' : 'LOCK'}` };
+  }
+
+  @Patch('door/change-password')
+  async changeDoorPassword(@Body() body: ChangeDoorPasswordDto) {
+    return await this.livingRoomService.changeDoorPassword(body);
   }
 }

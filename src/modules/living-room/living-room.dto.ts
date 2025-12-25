@@ -1,8 +1,26 @@
-import { IsBoolean } from 'class-validator';
+import { IsBoolean, IsString, IsNotEmpty } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
 
 export class LivingRoomStateDto {
   @ApiProperty({ example: true, description: 'Trạng thái của phòng khách' })
   @IsBoolean()
   state: boolean;
+}
+
+export class ChangeDoorPasswordDto {
+  @ApiProperty({
+    description: 'Mật khẩu cũ',
+    example: 'oldPassword123',
+  })
+  @IsString()
+  @IsNotEmpty()
+  oldPassword: string;
+
+  @ApiProperty({
+    description: 'Mật khẩu mới',
+    example: 'newPassword123',
+  })
+  @IsString()
+  @IsNotEmpty()
+  newPassword: string;
 }

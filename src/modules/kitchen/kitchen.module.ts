@@ -1,10 +1,18 @@
 import { Module } from '@nestjs/common';
+import { TypeOrmModule } from '@nestjs/typeorm';
+
 import { KitchenController } from './kitchen.controller';
 import { KitchenService } from './kitchen.service';
 import { MqttModule } from '../mqtt/mqtt.module';
+import { DeviceModule } from '../device/device.module';
+import { RoomSensorSnapshotEntity } from 'src/database/entities/sensor-data.entity';
 
 @Module({
-  imports: [MqttModule],
+  imports: [
+    MqttModule,
+    DeviceModule,
+    TypeOrmModule.forFeature([RoomSensorSnapshotEntity]),
+  ],
   controllers: [KitchenController],
   providers: [KitchenService],
   exports: [KitchenService],

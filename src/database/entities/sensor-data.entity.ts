@@ -24,8 +24,8 @@ export class RoomSensorSnapshotEntity {
   @Column({ type: 'real', nullable: true })
   humidity?: number;
 
-  @Column({ type: 'real', nullable: true })
-  gasLevel?: number;
+  @Column({ type: 'boolean', nullable: true })
+  gas?: boolean;
 
   @Column({ type: 'real', nullable: true })
   lightLevel?: number;

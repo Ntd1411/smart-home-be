@@ -1,6 +1,6 @@
-import { Controller, Get, Post, Body, Param } from '@nestjs/common';
+import { Controller, Get, Post, Body, Param, Patch } from '@nestjs/common';
 import { BedroomService } from './bedroom.service';
-import { BedRoomStateDto } from './bedroom.dto';
+import { BedRoomStateDto, ChangeDoorPasswordDto } from './bedroom.dto';
 
 @Controller('bedroom')
 export class BedroomController {
@@ -11,14 +11,21 @@ export class BedroomController {
     return await this.bedroomService.getDetails();
   }
 
-  @Get()
-  getStatus() {
-    return this.bedroomService.getStatus();
-  }
 
-  @Post('light')
-  async controlLight(@Body('') body: BedRoomStateDto) {
+  @Patch('light')
+  async controlLight(@Body() body: BedRoomStateDto) {
     await this.bedroomService.controlLight(body.state);
     return { success: true, message: `Light turned ${body.state ? 'ON' : 'OFF'}` };
+  }
+
+  @Patch('door')
+  async controlDoor(@Body() body: BedRoomStateDto) {
+    await this.bedroomService.controlDoor(body.state);
+    return { success: true, message: `Door ${body.state ? 'UNLOCK' : 'LOCK'}` };
+  }
+
+  @Patch('door/change-password')
+  async changeDoorPassword(@Body() body: ChangeDoorPasswordDto) {
+    return await this.bedroomService.changeDoorPassword(body);
   }
 }

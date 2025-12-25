@@ -57,6 +57,9 @@ export class EnvironmentValidation {
   @IsString()
   DB_NAME: string;
 
+  @IsString()
+  DATABASE_URL: string;
+
   // Swagger
   @IsString()
   SWAGGER_TITLE: string;
