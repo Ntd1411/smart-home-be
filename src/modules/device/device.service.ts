@@ -3,6 +3,7 @@ import { InjectRepository } from '@nestjs/typeorm'
 import { Repository } from 'typeorm'
 import { Device } from '../../database/entities/device.entity'
 import { UpsertDeviceDto } from './device.dto'
+import { DeviceType, DeviceStatus } from 'src/shared/enums/device.enum'
 
 @Injectable()
 export class DeviceService {
@@ -27,5 +28,48 @@ export class DeviceService {
       return this.deviceRepo.find({ where: { location } })
     }
     return this.deviceRepo.find()
+  }
+
+  // Kiểm tra xem thiết bị cụ thể (theo type) có online không
+  async isDeviceTypeOnline(location: string, deviceType: DeviceType): Promise<boolean> {
+    const devices = await this.deviceRepo.find({ 
+      where: { 
+        location,
+        type: deviceType
+      },
+      select: ['status', 'type']
+    });
+    
+    // Nếu không có thiết bị loại này hoặc tất cả đều offline → return false
+    if (devices.length === 0) {
+      return false;
+    }
+    
+    // Kiểm tra xem có ít nhất 1 thiết bị loại này online không
+    return devices.some(device => device.status === DeviceStatus.ONLINE);
+  }
+
+  // Lấy số lượng thiết bị online theo type
+  async getDeviceTypeStatus(location: string, deviceType: DeviceType): Promise<{
+    total: number;
+    online: number;
+    offline: number;
+  }> {
+    const devices = await this.deviceRepo.find({ 
+      where: { 
+        location,
+        type: deviceType
+      },
+      select: ['status']
+    });
+    
+    const online = devices.filter(d => d.status === DeviceStatus.ONLINE).length;
+    const offline = devices.filter(d => d.status === DeviceStatus.OFFLINE).length;
+    
+    return {
+      total: devices.length,
+      online,
+      offline
+    };
   }
 }

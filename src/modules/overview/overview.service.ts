@@ -1,6 +1,6 @@
 import { getDeviceStatistics } from './../../shared/utils/getDeviceStatistics';
 // overview.service.ts
-import { Injectable } from '@nestjs/common';
+import { Injectable, BadRequestException } from '@nestjs/common';
 import { DeviceService } from '../device/device.service';
 import { MqttService } from '../mqtt/mqtt.service';
 import { DeviceOverviewDto, OverviewStateDto } from './overview.dto';
@@ -11,6 +11,13 @@ import { KitchenService } from '../kitchen/kitchen.service';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { RoomSensorSnapshotEntity } from 'src/database/entities/sensor-data.entity';
+
+interface RoomControlResult {
+  room: string;
+  success: boolean;
+  message?: string;
+  error?: string;
+}
 
 @Injectable()
 export class OverviewService {
@@ -51,45 +58,107 @@ export class OverviewService {
   }
 
   async controlAllLights(state: boolean) {
-    try {
-      // Gửi lệnh MQTT tới từng phòng
-      await this.livingRoomMqttService.controlLight(state);
-      await this.bedroomMqttService.controlLight(state);
-      // Nếu có kitchen service
-      await this.kitchenMqttService.controlLight(state);
+    const results: RoomControlResult[] = [];
+    const rooms = [
+      { name: 'living-room', displayName: 'Phòng khách', service: this.livingRoomMqttService },
+      { name: 'bedroom', displayName: 'Phòng ngủ', service: this.bedroomMqttService },
+      { name: 'kitchen', displayName: 'Nhà bếp', service: this.kitchenMqttService },
+    ];
 
-      // Cập nhật trạng thái trong database
-      // await this.deviceService.updateMany(
-      //   { type: DeviceType.LIGHT },
-      //   { lastState: state ? 'on' : 'off' }
-      // );
-
-      return { success: true };
-    } catch (error) {
-      console.error('Error controlling all lights:', error);
-      throw new Error('Không thể điều khiển tất cả đèn');
+    // Kiểm tra trạng thái tất cả các phòng
+    for (const room of rooms) {
+      try {
+        await room.service.controlLight(state);
+        results.push({
+          room: room.displayName,
+          success: true,
+          message: `Đã ${state ? 'bật' : 'tắt'} đèn ${room.displayName}`,
+        });
+      } catch (error) {
+        results.push({
+          room: room.displayName,
+          success: false,
+          error: error.message || `Không thể điều khiển đèn ${room.displayName}`,
+        });
+      }
     }
+    console.log("results", results);
+
+    // Kiểm tra xem có phòng nào thành công không
+    const successCount = results.filter((r) => r.success).length;
+    const failedRooms = results.filter((r) => !r.success);
+
+    if (successCount === 0) {
+      // Tất cả đều thất bại
+      throw new BadRequestException({
+        message: 'Không thể điều khiển đèn ở bất kỳ phòng nào. Tất cả thiết bị đang offline.',
+        results,
+      });
+    }
+
+    // Một số phòng thành công, một số thất bại
+    return {
+      success: true,
+      message: `Đã ${state ? 'bật' : 'tắt'} đèn thành công ${successCount}/${rooms.length} phòng`,
+      successCount,
+      totalRooms: rooms.length,
+      results,
+      ...(failedRooms.length > 0 && {
+        warning: `Không thể điều khiển: ${failedRooms.map((r) => r.room).join(', ')}`,
+      }),
+    };
   }
 
   async controlAllDoors(state: boolean) {
-    try {
-      // Gửi lệnh MQTT tới từng phòng
-      await this.livingRoomMqttService.controlDoor(state);
-      // await this.bedroomMqttService.controlDoor(state);
-      // Nếu có kitchen service
-      // await this.kitchenMqttService.controlDoor(state);
+    const results: RoomControlResult[] = [];
+    const rooms = [
+      { name: 'living-room', displayName: 'Phòng khách', service: this.livingRoomMqttService },
+      // Uncomment nếu có door ở các phòng khác
+      // { name: 'bedroom', displayName: 'Phòng ngủ', service: this.bedroomMqttService },
+      // { name: 'kitchen', displayName: 'Nhà bếp', service: this.kitchenMqttService },
+    ];
 
-      // Cập nhật trạng thái trong database
-      // await this.deviceService.updateMany(
-      //   { type: DeviceType.DOOR },
-      //   { lastState: state ? 'open' : 'closed' }
-      // );
-
-      return { success: true };
-    } catch (error) {
-      console.error('Error controlling all doors:', error);
-      throw new Error('Không thể điều khiển tất cả cửa');
+    // Kiểm tra trạng thái tất cả các phòng
+    for (const room of rooms) {
+      try {
+        await room.service.controlDoor(state);
+        results.push({
+          room: room.displayName,
+          success: true,
+          message: `Đã ${state ? 'mở' : 'đóng'} cửa ${room.displayName}`,
+        });
+      } catch (error) {
+        results.push({
+          room: room.displayName,
+          success: false,
+          error: error.message || `Không thể điều khiển cửa ${room.displayName}`,
+        });
+      }
     }
+
+    // Kiểm tra xem có phòng nào thành công không
+    const successCount = results.filter((r) => r.success).length;
+    const failedRooms = results.filter((r) => !r.success);
+
+    if (successCount === 0) {
+      // Tất cả đều thất bại
+      throw new BadRequestException({
+        message: 'Không thể điều khiển cửa ở bất kỳ phòng nào. Tất cả thiết bị đang offline.',
+        results,
+      });
+    }
+
+    // Một số phòng thành công, một số thất bại
+    return {
+      success: true,
+      message: `Đã ${state ? 'mở' : 'đóng'} cửa thành công ${successCount}/${rooms.length} phòng`,
+      successCount,
+      totalRooms: rooms.length,
+      results,
+      ...(failedRooms.length > 0 && {
+        warning: `Không thể điều khiển: ${failedRooms.map((r) => r.room).join(', ')}`,
+      }),
+    };
   }
 
   // Optionally: điều khiển thiết bị từ overview

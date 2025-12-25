@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, BadRequestException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 
@@ -6,6 +6,7 @@ import { MqttService } from '../mqtt/mqtt.service';
 import { DeviceService } from '../device/device.service';
 import { RoomSensorSnapshotEntity } from 'src/database/entities/sensor-data.entity';
 import { getDeviceStatistics } from 'src/shared/utils/getDeviceStatistics';
+import { DeviceType } from 'src/shared/enums/device.enum';
 
 @Injectable()
 export class KitchenService {
@@ -21,10 +22,18 @@ export class KitchenService {
   }
 
   async controlLight(state: boolean) {
+    const isLightOnline = await this.deviceService.isDeviceTypeOnline('kitchen', DeviceType.LIGHT);
+    if (!isLightOnline) {
+      throw new BadRequestException('Không thể điều khiển đèn: Tất cả đèn nhà bếp đang offline');
+    }
     await this.mqttService.controlLight('kitchen', state);
   }
 
   async controlDoor(state: boolean) {
+    const isDoorOnline = await this.deviceService.isDeviceTypeOnline('kitchen', DeviceType.DOOR);
+    if (!isDoorOnline) {
+      throw new BadRequestException('Không thể điều khiển cửa: Tất cả cửa nhà bếp đang offline');
+    }
     await this.mqttService.controlDoor('kitchen', state);
   }
 

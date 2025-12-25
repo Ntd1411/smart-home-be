@@ -25,10 +25,18 @@ export class LivingRoomService {
   }
 
   async controlLight(state: boolean) {
+    const isLightOnline = await this.deviceService.isDeviceTypeOnline('living-room', DeviceType.LIGHT);
+    if (!isLightOnline) {
+      throw new BadRequestException('Không thể điều khiển đèn: Tất cả đèn phòng khách đang offline');
+    }
     await this.mqttService.controlLight('living-room', state);
   }
 
   async controlDoor(state: boolean) {
+    const isDoorOnline = await this.deviceService.isDeviceTypeOnline('living-room', DeviceType.DOOR);
+    if (!isDoorOnline) {
+      throw new BadRequestException('Không thể điều khiển cửa: Tất cả cửa phòng khách đang offline');
+    }
     await this.mqttService.controlDoor('living-room', state);
   }
 
