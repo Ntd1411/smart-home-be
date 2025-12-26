@@ -26,6 +26,7 @@ import { KitchenModule } from './modules/kitchen/kitchen.module';
 import { OverviewModule } from './modules/overview/overview.module';
 import { SocketModule } from './modules/socket/socket.module';
 import { SettingModule } from './modules/setting/setting.module';
+import { AppController } from './app.controller';
 // import { WebSocketModule } from './modules/websocket/websocket.module'; // Tạm thời tắt Socket.IO
 @Module({
   imports: [
@@ -45,7 +46,9 @@ import { SettingModule } from './modules/setting/setting.module';
     SocketModule, 
     SettingModule,
   ],
-  controllers: [],
+  controllers: [
+    AppController
+  ],
   providers: [
     // dùng để serialize response data (loại bỏ các field không cần thiết - các field có decorator @Exclude())
     {
