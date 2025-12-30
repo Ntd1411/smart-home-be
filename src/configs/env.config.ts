@@ -1,6 +1,6 @@
   // Resend
   @IsString()
-  RESEND_API_KEY: string;
+  RESEND_API_KEY?: string;
 import { Transform, plainToClass } from 'class-transformer';
 
 import {
