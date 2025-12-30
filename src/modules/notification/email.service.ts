@@ -1,5 +1,5 @@
 import { Injectable, Logger } from '@nestjs/common';
-import * as nodemailer from 'nodemailer';
+import { Resend } from 'resend';
 import { ConfigService } from 'src/shared/services/config.service';
 
 export interface SendEmailOptions {
@@ -12,58 +12,38 @@ export interface SendEmailOptions {
 @Injectable()
 export class EmailService {
   private readonly logger = new Logger(EmailService.name);
-  private transporter: nodemailer.Transporter;
+  private resend: Resend;
 
   constructor(private configService: ConfigService) {
-    this.initializeTransporter();
-  }
-
-  private initializeTransporter() {
-    const emailHost = this.configService.get('EMAIL_HOST') || 'smtp.gmail.com';
-    const emailPort = this.configService.get('EMAIL_PORT') || 587;
-    const emailUser = this.configService.get('EMAIL_USER');
-    const emailPassword = this.configService.get('EMAIL_PASSWORD');
-
-    if (!emailUser || !emailPassword) {
-      this.logger.warn(
-        '⚠️ Email credentials not configured. Email notifications will be disabled.',
-      );
+    const apiKey = this.configService.get('RESEND_API_KEY');
+    if (!apiKey) {
+      this.logger.warn('⚠️ RESEND_API_KEY not configured. Email notifications will be disabled.');
       return;
     }
-
-    this.transporter = nodemailer.createTransport({
-      host: emailHost,
-      port: emailPort,
-      secure: emailPort === 465, // true for 465, false for other ports
-      auth: {
-        user: emailUser,
-        pass: emailPassword,
-      },
-    });
-
-    this.logger.log(`✅ Email service initialized with ${emailHost}:${emailPort}`);
+    this.resend = new Resend(apiKey);
+    this.logger.log('✅ Email service initialized with Resend');
   }
 
   async sendEmail(options: SendEmailOptions): Promise<boolean> {
-    if (!this.transporter) {
-      this.logger.warn('Email transporter not initialized. Skipping email send.');
+    if (!this.resend) {
+      this.logger.warn('Resend not initialized. Skipping email send.');
       return false;
     }
-
     try {
-      const emailFrom = this.configService.get('EMAIL_USER');
-      
-      const mailOptions = {
-        from: `"Smart Home System" <${emailFrom}>`,
-        to: Array.isArray(options.to) ? options.to.join(', ') : options.to,
+      const emailFrom = this.configService.get('EMAIL_USER') || 'no-reply@smarthome.local';
+      const to = Array.isArray(options.to) ? options.to : [options.to];
+      const result = await this.resend.emails.send({
+        from: `Smart Home System <${emailFrom}>`,
+        to,
         subject: options.subject,
         html: options.html,
         text: options.text,
-      };
-      console.log("email send")
-
-      const info = await this.transporter.sendMail(mailOptions);
-      this.logger.log(`📧 Email sent successfully: ${info.messageId}`);
+      });
+      if (result.error) {
+        this.logger.error(`❌ Failed to send email: ${result.error.message}`);
+        return false;
+      }
+      this.logger.log(`📧 Email sent successfully: ${result.id}`);
       return true;
     } catch (error) {
       this.logger.error(`❌ Failed to send email: ${error.message}`, error.stack);
