@@ -20,7 +20,13 @@ export class EmailService {
       this.logger.warn('⚠️ BREVO_API_KEY not configured. Email notifications will be disabled.');
       return;
     }
-    SibApiV3Sdk.ApiClient.instance.authentications['apiKey'].apiKey = apiKey;
+    const defaultClient = SibApiV3Sdk.ApiClient.instance;
+    if (defaultClient && defaultClient.authentications && defaultClient.authentications['api-key']) {
+      defaultClient.authentications['api-key'].apiKey = apiKey;
+    } else {
+      this.logger.error('❌ Brevo API client not initialized properly.');
+      return;
+    }
     this.brevoApi = new SibApiV3Sdk.TransactionalEmailsApi();
     this.logger.log('✅ Email service initialized with Brevo (Sendinblue)');
   }
