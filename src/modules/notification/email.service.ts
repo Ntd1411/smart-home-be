@@ -1,5 +1,5 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { Resend } from 'resend';
+import * as SibApiV3Sdk from 'sib-api-v3-sdk';
 import { ConfigService } from 'src/shared/services/config.service';
 
 export interface SendEmailOptions {
@@ -12,38 +12,35 @@ export interface SendEmailOptions {
 @Injectable()
 export class EmailService {
   private readonly logger = new Logger(EmailService.name);
-  private resend: Resend;
+  private brevoApi: SibApiV3Sdk.TransactionalEmailsApi | null = null;
 
   constructor(private configService: ConfigService) {
-    const apiKey = this.configService.get('RESEND_API_KEY');
+    const apiKey = this.configService.get('BREVO_API_KEY');
     if (!apiKey) {
-      this.logger.warn('⚠️ RESEND_API_KEY not configured. Email notifications will be disabled.');
+      this.logger.warn('⚠️ BREVO_API_KEY not configured. Email notifications will be disabled.');
       return;
     }
-    this.resend = new Resend(String(apiKey));
-    this.logger.log('✅ Email service initialized with Resend');
+    SibApiV3Sdk.ApiClient.instance.authentications['apiKey'].apiKey = apiKey;
+    this.brevoApi = new SibApiV3Sdk.TransactionalEmailsApi();
+    this.logger.log('✅ Email service initialized with Brevo (Sendinblue)');
   }
 
   async sendEmail(options: SendEmailOptions): Promise<boolean> {
-    if (!this.resend) {
-      this.logger.warn('Resend not initialized. Skipping email send.');
+    if (!this.brevoApi) {
+      this.logger.warn('Brevo not initialized. Skipping email send.');
       return false;
     }
     try {
       const emailFrom = this.configService.get('EMAIL_USER') || 'no-reply@smarthome.local';
       const to = Array.isArray(options.to) ? options.to : [options.to];
-      const result = await this.resend.emails.send({
-        from: `Smart Home System <${emailFrom}>`,
-        to,
-        subject: options.subject,
-        html: options.html,
-        text: options.text,
-      });
-      if (result.error) {
-        this.logger.error(`❌ Failed to send email: ${result.error.message}`);
-        return false;
-      }
-      this.logger.log(`📧 Email sent successfully: ${result.data?.id}`);
+      const sendSmtpEmail = new SibApiV3Sdk.SendSmtpEmail();
+      sendSmtpEmail.sender = { name: 'Smart Home System', email: emailFrom };
+      sendSmtpEmail.to = to.map(email => ({ email }));
+      sendSmtpEmail.subject = options.subject;
+      sendSmtpEmail.htmlContent = options.html;
+      if (options.text) sendSmtpEmail.textContent = options.text;
+      const result = await this.brevoApi.sendTransacEmail(sendSmtpEmail);
+      this.logger.log(`📧 Email sent successfully: ${JSON.stringify(result)}`);
       return true;
     } catch (error) {
       this.logger.error(`❌ Failed to send email: ${error.message}`, error.stack);
