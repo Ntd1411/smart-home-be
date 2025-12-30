@@ -11,7 +11,6 @@ import {
 import { ApiTags, ApiOperation } from '@nestjs/swagger';
 import { NotificationService } from './notification.service';
 
-import type { RequestWithUser } from 'src/shared/interfaces/my-cls-store.interface';
 
 @ApiTags('Notifications')
 @Controller('notifications')
