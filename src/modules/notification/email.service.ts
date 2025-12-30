@@ -20,7 +20,7 @@ export class EmailService {
       this.logger.warn('⚠️ RESEND_API_KEY not configured. Email notifications will be disabled.');
       return;
     }
-    this.resend = new Resend(apiKey);
+    this.resend = new Resend(String(apiKey));
     this.logger.log('✅ Email service initialized with Resend');
   }
 
@@ -43,7 +43,7 @@ export class EmailService {
         this.logger.error(`❌ Failed to send email: ${result.error.message}`);
         return false;
       }
-      this.logger.log(`📧 Email sent successfully: ${result.id}`);
+      this.logger.log(`📧 Email sent successfully: ${result.data?.id}`);
       return true;
     } catch (error) {
       this.logger.error(`❌ Failed to send email: ${error.message}`, error.stack);

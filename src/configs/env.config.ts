@@ -1,6 +1,4 @@
-  // Resend
-  @IsString()
-  RESEND_API_KEY?: string;
+// ...existing code...
 import { Transform, plainToClass } from 'class-transformer';
 
 import {
@@ -20,6 +18,9 @@ export const NodeEnv = {
 export type NodeEnv = (typeof NodeEnv)[keyof typeof NodeEnv]; // -> type NodeEnv = "development" | "production" | "test"
 
 export class EnvironmentValidation {
+    // Resend
+    @IsString()
+    RESEND_API_KEY?: string;
   // Application
   @IsEnum(NodeEnv) // validation
   @Transform(({ value }) => value || NodeEnv.DEVELOPMENT) // this run before validation and modify the input
